@@ -13,12 +13,13 @@ const CONFIG_FILE_PATH = path.join(process.cwd(), 'data', 'content-filter.json')
 const DEFAULT_CONFIG: ContentFilterConfig = {
   enabled: true,
   defaultDeny: true,
-    allowedCategories: ['education', 'quran', 'programming', 'science'],
-
+  allowedCategories: ['education', 'quran', 'programming', 'science'],
   whitelist: [],
   blockedKeywords: [],
   maxResults: 50,
+  pinCode: "0000",
 };
+
 
 const CATEGORY_KEYWORDS: Record<AllowedCategory, string[]> = {
   education: ['تعليم', 'درس', 'شرح', 'كورس', 'course', 'tutorial', 'learn', 'education', 'lecture', 'محاضرة', 'مدرسة', 'جامعة', 'university', 'school', 'تعلم', 'دورة', 'training', 'workshop', 'ورشة'],

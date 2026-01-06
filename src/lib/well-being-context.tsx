@@ -20,6 +20,7 @@ interface WellBeingContextType {
   isBedtime: boolean;
   limits: WellBeingLimits;
   isParentalLocked: boolean;
+  isGracePeriodActive: boolean;
   setLimits: (limits: WellBeingLimits) => void;
   setParentalLocked: (locked: boolean) => void;
   checkPin: (pin: string) => boolean;
@@ -48,6 +49,7 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
   const [continuousWatchTime, setContinuousWatchTime] = useState(0);
   const [limits, setLimitsState] = useState<WellBeingLimits>(DEFAULT_LIMITS);
   const [isParentalLocked, setParentalLockedState] = useState(false);
+  const [isGracePeriodActive, setGracePeriodActive] = useState(false);
   const [pin, setPinState] = useState("0000");
   const [lastTrackedMinute, setLastTrackedMinute] = useState(new Date().getMinutes());
 
@@ -104,6 +106,14 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
   const setParentalLocked = (locked: boolean) => {
     setParentalLockedState(locked);
     localStorage.setItem('wb-locked', String(locked));
+    
+    // If unlocking, start a 30-second grace period
+    if (!locked) {
+      setGracePeriodActive(true);
+      setTimeout(() => {
+        setGracePeriodActive(false);
+      }, 30000); // 30 seconds
+    }
   };
 
   const setPin = (newPin: string) => {
@@ -137,7 +147,6 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
       const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
-      const currentTimeStr = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}`;
 
       const [startH, startM] = limits.bedtimeStart.split(':').map(Number);
       const [endH, endM] = limits.bedtimeEnd.split(':').map(Number);
@@ -169,7 +178,6 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
     }
     
     if (limits.breakInterval > 0 && continuousWatchTime >= limits.breakInterval) {
-      // This should probably be handled by a modal if it's a hard break, but for now a toast
       toast.info(t('breakReminder') || "Time for a short break!");
     }
   }, [dailyWatchTime, continuousWatchTime, limits.dailyTimeLimit, limits.breakInterval, t]);
@@ -182,6 +190,7 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
       isBedtime,
       limits,
       isParentalLocked,
+      isGracePeriodActive,
       setLimits,
       setParentalLocked,
       checkPin,

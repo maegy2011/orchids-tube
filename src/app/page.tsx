@@ -92,10 +92,18 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
           externalLoading={isGridLoading}
         />
           <SidebarGuide isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} pb-24 transition-all duration-300`}>
+            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300`}>
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
           
+          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages || 10} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
+  
           <VideoGrid 
             searchQuery={searchQuery} 
             currentPage={currentPage} 
@@ -103,14 +111,6 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
             onTotalPagesChange={setTotalPages}
             onLoadingChange={setIsGridLoading}
           />
-
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-[calc(50%-120px)] z-40 bg-background/80 backdrop-blur-md border border-border px-4 py-2 rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl">
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
       </main>
     </div>
   );
