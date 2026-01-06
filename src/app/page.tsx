@@ -9,24 +9,26 @@ import Pagination from "@/components/sections/pagination";
 import { useI18n } from "@/lib/i18n-context";
 import { getDaysUntilRamadan } from "@/lib/date-utils";
 
-export default function Home() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(50);
-  const [isGridLoading, setIsGridLoading] = useState(false);
-  const [daysUntilRamadan, setDaysUntilRamadan] = useState<number | null>(null);
-  const { showRamadanCountdown, direction } = useI18n();
-  const gridRef = useRef<HTMLDivElement>(null);
+    export default function Home() {
+      const [searchQuery, setSearchQuery] = useState("");
+      const [sidebarOpen, setSidebarOpen] = useState(false);
+      const [currentPage, setCurrentPage] = useState(1);
+      const [totalPages, setTotalPages] = useState(50);
+      const [isGridLoading, setIsGridLoading] = useState(false);
+      const [daysUntilRamadan, setDaysUntilRamadan] = useState<number | null>(null);
+      const { showRamadanCountdown } = useI18n();
+      const gridRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setDaysUntilRamadan(getDaysUntilRamadan());
-  }, []);
+      useEffect(() => {
+        setDaysUntilRamadan(getDaysUntilRamadan());
+      }, []);
 
-  const isRamadanCountdownVisible = showRamadanCountdown && daysUntilRamadan !== null && daysUntilRamadan > 0;
-  const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
+      const isRamadanCountdownVisible = showRamadanCountdown && daysUntilRamadan !== null && daysUntilRamadan > 0;
+      const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
 
-  // Persistence logic
+
+
+  // Persistence to "save scroll position" and state
   useEffect(() => {
     const savedQuery = localStorage.getItem("searchQuery");
     const savedPage = localStorage.getItem("currentPage");
@@ -59,6 +61,7 @@ export default function Home() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    // Move to top of video grid when navigating to other page
     if (gridRef.current) {
       const headerOffset = 80;
       const elementPosition = gridRef.current.getBoundingClientRect().top;
@@ -81,26 +84,26 @@ export default function Home() {
     setCurrentPage(1);
   };
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const closeSidebar = () => setSidebarOpen(false);
+    return (
+      <div className="min-h-screen bg-background">
+        <Masthead 
+          onSearch={handleSearch} 
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+          externalLoading={isGridLoading}
+        />
+          <SidebarGuide isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300`}>
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Masthead 
-        onSearch={handleSearch} 
-        onMenuClick={toggleSidebar} 
-        externalLoading={isGridLoading}
-      />
-      
-      <SidebarGuide isOpen={sidebarOpen} onClose={closeSidebar} />
-      
-      <main className={`
-        ${direction === 'rtl' ? 'mr-0 lg:mr-[240px]' : 'ml-0 lg:ml-[240px]'} 
-        ${mainPaddingTop} pb-32 transition-all duration-300
-      `}>
-        <FeedFilterBar onCategoryChange={handleCategoryChange} />
-        
-        <div ref={gridRef} className="px-4 sm:px-6">
+          <FeedFilterBar onCategoryChange={handleCategoryChange} />
+          
+          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages || 10} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
+  
           <VideoGrid 
             searchQuery={searchQuery} 
             currentPage={currentPage} 
@@ -108,23 +111,6 @@ export default function Home() {
             onTotalPagesChange={setTotalPages}
             onLoadingChange={setIsGridLoading}
           />
-        </div>
-
-        {/* Floating Pagination Bar */}
-        <div className={`
-          fixed bottom-8 z-[100] transition-all duration-500 ease-out
-          left-1/2 -translate-x-1/2
-          ${direction === 'rtl' ? 'lg:left-auto lg:right-[calc(50%+120px)] lg:translate-x-1/2' : 'lg:left-[calc(50%+120px)]'}
-          group
-        `}>
-          <div className="bg-background/90 backdrop-blur-xl border border-primary/20 shadow-[0_20px_50px_rgba(0,0,0,0.3)] px-6 py-3 rounded-full flex items-center justify-center hover:scale-105 hover:border-primary/40 transition-all duration-300">
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
-        </div>
       </main>
     </div>
   );
