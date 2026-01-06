@@ -84,33 +84,45 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
     setCurrentPage(1);
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(prev => !prev);
+  };
+
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
+
+  const handleLoadingChange = (loading: boolean) => {
+    setIsGridLoading(loading);
+  };
+
     return (
       <div className="min-h-screen bg-background">
         <Masthead 
           onSearch={handleSearch} 
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+          onMenuClick={toggleSidebar} 
           externalLoading={isGridLoading}
         />
-          <SidebarGuide isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300`}>
+          <SidebarGuide isOpen={sidebarOpen} onClose={closeSidebar} />
+            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} pb-24 transition-all duration-300`}>
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
           
-          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
+          <VideoGrid 
+            searchQuery={searchQuery} 
+            currentPage={currentPage} 
+            onPageChange={setCurrentPage}
+            onTotalPagesChange={setTotalPages}
+            onLoadingChange={handleLoadingChange}
+          />
+
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/80 backdrop-blur-md border border-border shadow-2xl px-4 py-2 rounded-2xl flex justify-center lg:left-[calc(50%-120px)] transition-all duration-300">
             <Pagination 
               currentPage={currentPage} 
               totalPages={totalPages || 10} 
               onPageChange={handlePageChange} 
             />
           </div>
-  
-          <VideoGrid 
-            searchQuery={searchQuery} 
-            currentPage={currentPage} 
-            onPageChange={setCurrentPage}
-            onTotalPagesChange={setTotalPages}
-            onLoadingChange={setIsGridLoading}
-          />
       </main>
     </div>
   );
