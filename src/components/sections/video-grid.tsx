@@ -75,16 +75,13 @@ export default function VideoGrid({
     
     // Keep track of tokens for each page to support going back/forth
     const pageTokens = useRef<Record<number, string | null>>({ 1: null });
+    const prefetchedResults = useRef<Record<number, Video[]>>({});
     const [lastFetchedPage, setLastFetchedPage] = useState(0);
-    const [preloadedVideos, setPreloadedVideos] = useState<Record<number, Video[]>>({});
-    const [isPreloading, setIsPreloading] = useState(false);
 
-    const preloadNextPage = useCallback(async (nextPage: number) => {
-      if (preloadedVideos[nextPage] || isPreloading) return;
+    const prefetchNextPage = useCallback(async (nextPage: number) => {
       const token = pageTokens.current[nextPage];
-      if (!token) return;
+      if (!token || prefetchedResults.current[nextPage]) return;
 
-      setIsPreloading(true);
       try {
         const defaultQuery = t("education") || "education";
         const q = searchQuery || defaultQuery;
@@ -100,33 +97,26 @@ export default function VideoGrid({
         const response = await fetch(url.toString());
         if (response.ok) {
           const data = await response.json();
-          if (data.videos) {
-            setPreloadedVideos(prev => ({ ...prev, [nextPage]: data.videos }));
-            if (data.continuationToken) {
-              pageTokens.current[nextPage + 1] = data.continuationToken;
-            }
+          prefetchedResults.current[nextPage] = data.videos || [];
+          if (data.continuationToken) {
+            pageTokens.current[nextPage + 1] = data.continuationToken;
           }
         }
       } catch (err) {
-        console.error("Error preloading videos:", err);
-      } finally {
-        setIsPreloading(false);
+        console.warn("Prefetch failed:", err);
       }
-    }, [searchQuery, location, language, restrictedMode, t, preloadedVideos, isPreloading]);
+    }, [searchQuery, location, restrictedMode, t, language]);
 
     const fetchVideos = useCallback(async (page: number, append: boolean = false) => {
-      // Use preloaded data if available
-      if (append && preloadedVideos[page]) {
-        setVideos(prev => [...prev, ...preloadedVideos[page]]);
+      // Check if we already have prefetched results for this page
+      if (append && prefetchedResults.current[page]) {
+        const prefetchedVideos = prefetchedResults.current[page];
+        setVideos(prev => [...prev, ...prefetchedVideos]);
         setLastFetchedPage(page);
-        // Clear this page's preloaded data as it's now used
-        setPreloadedVideos(prev => {
-          const next = { ...prev };
-          delete next[page];
-          return next;
-        });
-        // Trigger preload for the next one
-        preloadNextPage(page + 1);
+        delete prefetchedResults.current[page];
+        
+        // Trigger prefetch for the NEXT page
+        prefetchNextPage(page + 1);
         return;
       }
 
@@ -159,13 +149,13 @@ export default function VideoGrid({
         setVideos(prev => [...prev, ...newVideos]);
       } else {
         setVideos(newVideos);
-        // Reset preloaded data on fresh search/page jump
-        setPreloadedVideos({});
       }
       
       // Store the token for the NEXT page
       if (data.continuationToken) {
         pageTokens.current[page + 1] = data.continuationToken;
+        // Start prefetching next page
+        prefetchNextPage(page + 1);
       }
       
       if (onTotalPagesChange) {
@@ -174,11 +164,6 @@ export default function VideoGrid({
       }
       
       setLastFetchedPage(page);
-
-      // Start preloading the next page
-      if (data.hasMore) {
-        preloadNextPage(page + 1);
-      }
 
       // Auto-load more if we got very few results but there's more available
       if (newVideos.length < 10 && data.hasMore && page < 20) {
@@ -193,12 +178,12 @@ export default function VideoGrid({
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, location, language, restrictedMode, t, onTotalPagesChange, preloadedVideos, preloadNextPage]);
+  }, [searchQuery, location, restrictedMode, onTotalPagesChange, prefetchNextPage, t, language]);
 
-  // Reset tokens and fetch page 1 when search query or location changes
+  // Reset tokens and prefetched results and fetch page 1 when search query or location changes
   useEffect(() => {
     pageTokens.current = { 1: null };
-    setPreloadedVideos({});
+    prefetchedResults.current = {};
     fetchVideos(1, false);
     if (onPageChange) onPageChange(1);
   }, [searchQuery, location, restrictedMode, fetchVideos, onPageChange]);
@@ -302,14 +287,14 @@ export default function VideoGrid({
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.3, delay: (index % 20) * 0.05 }}
                 >
-                  <Link href={`/watch/${video.id}`} className="group flex flex-col gap-3">
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all duration-300 group-hover:rounded-none">
-                      <img
-                        src={video.thumbnail}
-                        alt={video.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        loading="lazy"
-                      />
+                    <Link href={`/watch/${video.id}`} className="group flex flex-col gap-3">
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all duration-300 group-hover:rounded-none">
+                        <img
+                          src={video.thumbnail || "/placeholder-video.jpg"}
+                          alt={video.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                        />
                         <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[12px] font-bold px-1.5 py-0.5 rounded-md">
                           {video.duration}
                         </div>

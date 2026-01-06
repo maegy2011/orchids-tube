@@ -32,17 +32,10 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
   useEffect(() => {
     const savedQuery = localStorage.getItem("searchQuery");
     const savedPage = localStorage.getItem("currentPage");
-    const savedScroll = localStorage.getItem("scrollPosition");
 
     if (savedQuery) setSearchQuery(savedQuery);
     if (savedPage) setCurrentPage(parseInt(savedPage));
     
-    if (savedScroll) {
-      setTimeout(() => {
-        window.scrollTo(0, parseInt(savedScroll));
-      }, 500);
-    }
-
     const handleScroll = () => {
       localStorage.setItem("scrollPosition", window.scrollY.toString());
     };
@@ -50,6 +43,25 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    // Only scroll if we are not loading and have a saved position
+    if (!isGridLoading && typeof window !== 'undefined') {
+      const savedScroll = localStorage.getItem("scrollPosition");
+      if (savedScroll && parseInt(savedScroll) > 0) {
+        // Delay slightly to ensure DOM is rendered
+        const timer = setTimeout(() => {
+          window.scrollTo({
+            top: parseInt(savedScroll),
+            behavior: 'instant'
+          });
+          // Only scroll once per session/load
+          localStorage.removeItem("scrollPosition");
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isGridLoading]);
 
   useEffect(() => {
     localStorage.setItem("searchQuery", searchQuery);
@@ -96,26 +108,22 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
           
-            <VideoGrid 
-              searchQuery={searchQuery} 
+          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
+            <Pagination 
               currentPage={currentPage} 
-              onPageChange={setCurrentPage}
-              onTotalPagesChange={setTotalPages}
-              onLoadingChange={setIsGridLoading}
+              totalPages={totalPages || 10} 
+              onPageChange={handlePageChange} 
             />
-
-            {/* Floating Pagination Bar */}
-            <div className="fixed bottom-6 left-0 right-0 lg:left-[240px] z-40 flex justify-center pointer-events-none px-4">
-              <div className="bg-background/80 backdrop-blur-md border border-border p-2 rounded-2xl shadow-2xl flex items-center gap-4 pointer-events-auto animate-in slide-in-from-bottom-4 duration-500">
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages || 10} 
-                  onPageChange={handlePageChange} 
-                />
-              </div>
-            </div>
-        </main>
-      </div>
-    );
-  }
-
+          </div>
+  
+          <VideoGrid 
+            searchQuery={searchQuery} 
+            currentPage={currentPage} 
+            onPageChange={setCurrentPage}
+            onTotalPagesChange={setTotalPages}
+            onLoadingChange={setIsGridLoading}
+          />
+      </main>
+    </div>
+  );
+}
