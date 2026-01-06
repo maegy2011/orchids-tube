@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n-context";
 
 interface PaginationProps {
   currentPage: number;
@@ -10,16 +11,17 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-import { useI18n } from "@/lib/i18n-context";
-
 export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   const { t, direction } = useI18n();
-  // If we are using infinite scroll, this component might be redundant, 
-  // but we keep it for backward compatibility or as a fallback.
   
   const pages = [];
-  const startPage = Math.max(1, currentPage - 2);
-  const endPage = Math.min(totalPages, startPage + 4);
+  const maxVisiblePages = 3;
+  let startPage = Math.max(1, currentPage - 1);
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  
+  if (endPage - startPage < maxVisiblePages - 1) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
   
   for (let i = startPage; i <= endPage; i++) {
     pages.push(i);
@@ -32,24 +34,39 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
   const SinglePrevIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
   const SingleNextIcon = direction === 'rtl' ? ChevronLeft : ChevronRight;
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="flex items-center gap-1 sm:gap-2">
         <button
+          onClick={scrollToTop}
+          className="p-2 rounded-xl hover:bg-muted text-foreground/60 hover:text-foreground transition-all flex items-center gap-1 sm:px-3"
+          title={t('back_to_top') || "الرجوع للأعلى"}
+        >
+          <ArrowUp size={18} />
+          <span className="hidden sm:inline text-xs font-bold">{t('top') || "أعلى"}</span>
+        </button>
+
+        <div className="w-px h-6 bg-border mx-1" />
+
+        <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          className="p-1.5 sm:p-2 rounded-lg hover:bg-muted disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
           title={t('firstPage')}
         >
-          <PrevIcon size={20} />
+          <PrevIcon size={18} />
         </button>
         
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          className="p-1.5 sm:p-2 rounded-lg hover:bg-muted disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
           title={t('previous')}
         >
-          <SinglePrevIcon size={20} />
+          <SinglePrevIcon size={18} />
         </button>
   
         <div className="flex items-center gap-1">
@@ -58,10 +75,10 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
               key={page}
               onClick={() => onPageChange(page)}
               className={cn(
-                "w-10 h-10 rounded-lg text-sm font-bold transition-all",
+                "w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-xs sm:text-sm font-bold transition-all",
                 currentPage === page
-                  ? "bg-foreground text-background shadow-md scale-105"
-                  : "text-foreground hover:bg-muted"
+                  ? "bg-foreground text-background shadow-lg scale-110"
+                  : "text-foreground/70 hover:bg-muted"
               )}
             >
               {page}
@@ -72,19 +89,19 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          className="p-1.5 sm:p-2 rounded-lg hover:bg-muted disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
           title={t('next')}
         >
-          <SingleNextIcon size={20} />
+          <SingleNextIcon size={18} />
         </button>
   
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          className="p-1.5 sm:p-2 rounded-lg hover:bg-muted disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
           title={t('lastPage')}
         >
-          <NextIcon size={20} />
+          <NextIcon size={18} />
         </button>
     </div>
   );

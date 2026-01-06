@@ -75,24 +75,57 @@ export default function VideoGrid({
     
     // Keep track of tokens for each page to support going back/forth
     const pageTokens = useRef<Record<number, string | null>>({ 1: null });
-    const preloadedData = useRef<Record<number, any>>({});
     const [lastFetchedPage, setLastFetchedPage] = useState(0);
+    const [preloadedVideos, setPreloadedVideos] = useState<Record<number, Video[]>>({});
+    const [isPreloading, setIsPreloading] = useState(false);
+
+    const preloadNextPage = useCallback(async (nextPage: number) => {
+      if (preloadedVideos[nextPage] || isPreloading) return;
+      const token = pageTokens.current[nextPage];
+      if (!token) return;
+
+      setIsPreloading(true);
+      try {
+        const defaultQuery = t("education") || "education";
+        const q = searchQuery || defaultQuery;
+        const url = new URL("/api/videos/search", window.location.origin);
+        url.searchParams.set("q", q);
+        url.searchParams.set("location", location);
+        url.searchParams.set("language", language);
+        url.searchParams.set("restricted", String(restrictedMode));
+        url.searchParams.set("token", token);
+        url.searchParams.set("limit", "30");
+        url.searchParams.set("page", nextPage.toString());
+
+        const response = await fetch(url.toString());
+        if (response.ok) {
+          const data = await response.json();
+          if (data.videos) {
+            setPreloadedVideos(prev => ({ ...prev, [nextPage]: data.videos }));
+            if (data.continuationToken) {
+              pageTokens.current[nextPage + 1] = data.continuationToken;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error preloading videos:", err);
+      } finally {
+        setIsPreloading(false);
+      }
+    }, [searchQuery, location, language, restrictedMode, t, preloadedVideos, isPreloading]);
 
     const fetchVideos = useCallback(async (page: number, append: boolean = false) => {
-      // If we have preloaded data, use it
-      if (append && preloadedData.current[page]) {
-        const data = preloadedData.current[page];
-        const newVideos = data.videos || [];
-        setVideos(prev => [...prev, ...newVideos]);
-        if (data.continuationToken) {
-          pageTokens.current[page + 1] = data.continuationToken;
-        }
-        if (onTotalPagesChange) {
-          onTotalPagesChange(data.hasMore ? Math.max(page + 10, 100) : page);
-        }
+      // Use preloaded data if available
+      if (append && preloadedVideos[page]) {
+        setVideos(prev => [...prev, ...preloadedVideos[page]]);
         setLastFetchedPage(page);
-        
-        // After using preloaded data, preload the NEXT one
+        // Clear this page's preloaded data as it's now used
+        setPreloadedVideos(prev => {
+          const next = { ...prev };
+          delete next[page];
+          return next;
+        });
+        // Trigger preload for the next one
         preloadNextPage(page + 1);
         return;
       }
@@ -126,8 +159,8 @@ export default function VideoGrid({
         setVideos(prev => [...prev, ...newVideos]);
       } else {
         setVideos(newVideos);
-        // If we reset (manual page change), clear preloaded data for future pages
-        preloadedData.current = {};
+        // Reset preloaded data on fresh search/page jump
+        setPreloadedVideos({});
       }
       
       // Store the token for the NEXT page
@@ -142,9 +175,16 @@ export default function VideoGrid({
       
       setLastFetchedPage(page);
 
-      // Preload the next page in background
+      // Start preloading the next page
       if (data.hasMore) {
         preloadNextPage(page + 1);
+      }
+
+      // Auto-load more if we got very few results but there's more available
+      if (newVideos.length < 10 && data.hasMore && page < 20) {
+        setTimeout(() => {
+          fetchVideos(page + 1, true);
+        }, 500);
       }
 
     } catch (err) {
@@ -153,38 +193,12 @@ export default function VideoGrid({
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, location, restrictedMode, onTotalPagesChange]);
-
-  const preloadNextPage = useCallback(async (page: number) => {
-    // Don't preload if we already have it or if no token
-    if (preloadedData.current[page] || !pageTokens.current[page]) return;
-
-    try {
-      const defaultQuery = t("education") || "education";
-      const q = searchQuery || defaultQuery;
-      const url = new URL("/api/videos/search", window.location.origin);
-      url.searchParams.set("q", q);
-      url.searchParams.set("location", location);
-      url.searchParams.set("language", language);
-      url.searchParams.set("restricted", String(restrictedMode));
-      url.searchParams.set("token", pageTokens.current[page]!);
-      url.searchParams.set("limit", "30");
-      url.searchParams.set("page", page.toString());
-
-      const response = await fetch(url.toString());
-      if (response.ok) {
-        const data = await response.json();
-        preloadedData.current[page] = data;
-      }
-    } catch (e) {
-      console.warn("Failed to preload page", page, e);
-    }
-  }, [searchQuery, location, restrictedMode]);
+  }, [searchQuery, location, language, restrictedMode, t, onTotalPagesChange, preloadedVideos, preloadNextPage]);
 
   // Reset tokens and fetch page 1 when search query or location changes
   useEffect(() => {
     pageTokens.current = { 1: null };
-    preloadedData.current = {};
+    setPreloadedVideos({});
     fetchVideos(1, false);
     if (onPageChange) onPageChange(1);
   }, [searchQuery, location, restrictedMode, fetchVideos, onPageChange]);
@@ -196,9 +210,9 @@ export default function VideoGrid({
     }
   }, [currentPage, lastFetchedPage, fetchVideos]);
 
-  const loadMore = async () => {
+  const loadMore = () => {
     const nextPage = lastFetchedPage + 1;
-    await fetchVideos(nextPage, true);
+    fetchVideos(nextPage, true);
     if (onPageChange) onPageChange(nextPage);
   };
 

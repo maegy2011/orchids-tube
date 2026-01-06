@@ -96,22 +96,26 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
           
-          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
-            <Pagination 
+            <VideoGrid 
+              searchQuery={searchQuery} 
               currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
+              onPageChange={setCurrentPage}
+              onTotalPagesChange={setTotalPages}
+              onLoadingChange={setIsGridLoading}
             />
-          </div>
-  
-          <VideoGrid 
-            searchQuery={searchQuery} 
-            currentPage={currentPage} 
-            onPageChange={setCurrentPage}
-            onTotalPagesChange={setTotalPages}
-            onLoadingChange={setIsGridLoading}
-          />
-      </main>
-    </div>
-  );
-}
+
+            {/* Floating Pagination Bar */}
+            <div className="fixed bottom-6 left-0 right-0 lg:left-[240px] z-40 flex justify-center pointer-events-none px-4">
+              <div className="bg-background/80 backdrop-blur-md border border-border p-2 rounded-2xl shadow-2xl flex items-center gap-4 pointer-events-auto animate-in slide-in-from-bottom-4 duration-500">
+                <Pagination 
+                  currentPage={currentPage} 
+                  totalPages={totalPages || 10} 
+                  onPageChange={handlePageChange} 
+                />
+              </div>
+            </div>
+        </main>
+      </div>
+    );
+  }
+
