@@ -92,25 +92,29 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
           externalLoading={isGridLoading}
         />
           <SidebarGuide isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300`}>
+            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300 pb-24`}>
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
-          
-          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
-            <Pagination 
+  
+          <div ref={gridRef}>
+            <VideoGrid 
+              searchQuery={searchQuery} 
               currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
+              onPageChange={setCurrentPage}
+              onTotalPagesChange={setTotalPages}
+              onLoadingChange={setIsGridLoading}
             />
           </div>
-  
-          <VideoGrid 
-            searchQuery={searchQuery} 
-            currentPage={currentPage} 
-            onPageChange={setCurrentPage}
-            onTotalPagesChange={setTotalPages}
-            onLoadingChange={setIsGridLoading}
-          />
+
+          <div className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none z-[4000] transition-all duration-300 lg:pr-[240px]">
+            <div className="bg-background/80 backdrop-blur-md border border-border px-3 py-2 rounded-full shadow-2xl pointer-events-auto mx-4 overflow-x-auto no-scrollbar max-w-[95vw]">
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages || 10} 
+                onPageChange={handlePageChange} 
+              />
+            </div>
+          </div>
       </main>
     </div>
   );
