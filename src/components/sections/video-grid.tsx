@@ -75,51 +75,9 @@ export default function VideoGrid({
     
     // Keep track of tokens for each page to support going back/forth
     const pageTokens = useRef<Record<number, string | null>>({ 1: null });
-    const prefetchedResults = useRef<Record<number, Video[]>>({});
     const [lastFetchedPage, setLastFetchedPage] = useState(0);
 
-    const prefetchNextPage = useCallback(async (nextPage: number) => {
-      const token = pageTokens.current[nextPage];
-      if (!token || prefetchedResults.current[nextPage]) return;
-
-      try {
-        const defaultQuery = t("education") || "education";
-        const q = searchQuery || defaultQuery;
-        const url = new URL("/api/videos/search", window.location.origin);
-        url.searchParams.set("q", q);
-        url.searchParams.set("location", location);
-        url.searchParams.set("language", language);
-        url.searchParams.set("restricted", String(restrictedMode));
-        url.searchParams.set("token", token);
-        url.searchParams.set("limit", "30");
-        url.searchParams.set("page", nextPage.toString());
-
-        const response = await fetch(url.toString());
-        if (response.ok) {
-          const data = await response.json();
-          prefetchedResults.current[nextPage] = data.videos || [];
-          if (data.continuationToken) {
-            pageTokens.current[nextPage + 1] = data.continuationToken;
-          }
-        }
-      } catch (err) {
-        console.warn("Prefetch failed:", err);
-      }
-    }, [searchQuery, location, restrictedMode, t, language]);
-
-    const fetchVideos = useCallback(async (page: number, append: boolean = false) => {
-      // Check if we already have prefetched results for this page
-      if (append && prefetchedResults.current[page]) {
-        const prefetchedVideos = prefetchedResults.current[page];
-        setVideos(prev => [...prev, ...prefetchedVideos]);
-        setLastFetchedPage(page);
-        delete prefetchedResults.current[page];
-        
-        // Trigger prefetch for the NEXT page
-        prefetchNextPage(page + 1);
-        return;
-      }
-
+    const fetchVideos = useCallback(async (page: number) => {
       setIsLoading(true);
       setError(null);
       try {
@@ -145,17 +103,11 @@ export default function VideoGrid({
       const data = await response.json();
       const newVideos = data.videos || [];
       
-      if (append) {
-        setVideos(prev => [...prev, ...newVideos]);
-      } else {
-        setVideos(newVideos);
-      }
+      setVideos(newVideos);
       
       // Store the token for the NEXT page
       if (data.continuationToken) {
         pageTokens.current[page + 1] = data.continuationToken;
-        // Start prefetching next page
-        prefetchNextPage(page + 1);
       }
       
       if (onTotalPagesChange) {
@@ -165,64 +117,27 @@ export default function VideoGrid({
       
       setLastFetchedPage(page);
 
-      // Auto-load more if we got very few results but there's more available
-      if (newVideos.length < 10 && data.hasMore && page < 20) {
-        setTimeout(() => {
-          fetchVideos(page + 1, true);
-        }, 500);
-      }
-
     } catch (err) {
       console.error("Error fetching videos:", err);
       setError("حدث خطأ أثناء تحميل الفيديوهات. يرجى المحاولة لاحقاً.");
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, location, restrictedMode, onTotalPagesChange, prefetchNextPage, t, language]);
+  }, [searchQuery, location, restrictedMode, onTotalPagesChange]);
 
-  // Reset tokens and prefetched results and fetch page 1 when search query or location changes
+  // Reset tokens and fetch page 1 when search query or location changes
   useEffect(() => {
     pageTokens.current = { 1: null };
-    prefetchedResults.current = {};
-    fetchVideos(1, false);
+    fetchVideos(1);
     if (onPageChange) onPageChange(1);
   }, [searchQuery, location, restrictedMode, fetchVideos, onPageChange]);
 
   // Fetch when currentPage changes
   useEffect(() => {
     if (currentPage !== lastFetchedPage && currentPage > 0) {
-      fetchVideos(currentPage, false);
+      fetchVideos(currentPage);
     }
   }, [currentPage, lastFetchedPage, fetchVideos]);
-
-  const loadMore = () => {
-    const nextPage = lastFetchedPage + 1;
-    fetchVideos(nextPage, true);
-    if (onPageChange) onPageChange(nextPage);
-  };
-
-    const observerTarget = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && !isLoading && videos.length > 0) {
-            const nextPage = lastFetchedPage + 1;
-            // Check if we have a token for the next page
-            if (pageTokens.current[nextPage]) {
-              loadMore();
-            }
-          }
-        },
-        { threshold: 1.0, rootMargin: "200px" }
-      );
-
-      if (observerTarget.current) {
-        observer.observe(observerTarget.current);
-      }
-
-      return () => observer.disconnect();
-    }, [isLoading, videos.length, lastFetchedPage]);
 
     const isRtl = direction === "rtl";
 
@@ -287,14 +202,14 @@ export default function VideoGrid({
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.3, delay: (index % 20) * 0.05 }}
                 >
-                    <Link href={`/watch/${video.id}`} className="group flex flex-col gap-3">
-                      <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all duration-300 group-hover:rounded-none">
-                        <img
-                          src={video.thumbnail || "/placeholder-video.jpg"}
-                          alt={video.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          loading="lazy"
-                        />
+                  <Link href={`/watch/${video.id}`} className="group flex flex-col gap-3">
+                    <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all duration-300 group-hover:rounded-none">
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
                         <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[12px] font-bold px-1.5 py-0.5 rounded-md">
                           {video.duration}
                         </div>
@@ -375,24 +290,6 @@ export default function VideoGrid({
             </AnimatePresence>
           </div>
         )}
-
-        {/* Infinite Scroll / Load More Trigger */}
-        <div ref={observerTarget} className="h-20 flex items-center justify-center mt-8">
-          {isLoading && videos.length > 0 && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>جاري تحميل المزيد...</span>
-            </div>
-          )}
-          {!isLoading && videos.length > 0 && pageTokens.current[lastFetchedPage + 1] && (
-            <button
-              onClick={loadMore}
-              className="px-8 py-2 border border-border rounded-full hover:bg-muted transition-colors text-sm font-medium"
-            >
-              تحميل المزيد
-            </button>
-          )}
-        </div>
 
         {!isLoading && videos.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">

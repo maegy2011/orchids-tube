@@ -32,10 +32,17 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
   useEffect(() => {
     const savedQuery = localStorage.getItem("searchQuery");
     const savedPage = localStorage.getItem("currentPage");
+    const savedScroll = localStorage.getItem("scrollPosition");
 
     if (savedQuery) setSearchQuery(savedQuery);
     if (savedPage) setCurrentPage(parseInt(savedPage));
     
+    if (savedScroll) {
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScroll));
+      }, 500);
+    }
+
     const handleScroll = () => {
       localStorage.setItem("scrollPosition", window.scrollY.toString());
     };
@@ -43,25 +50,6 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    // Only scroll if we are not loading and have a saved position
-    if (!isGridLoading && typeof window !== 'undefined') {
-      const savedScroll = localStorage.getItem("scrollPosition");
-      if (savedScroll && parseInt(savedScroll) > 0) {
-        // Delay slightly to ensure DOM is rendered
-        const timer = setTimeout(() => {
-          window.scrollTo({
-            top: parseInt(savedScroll),
-            behavior: 'instant'
-          });
-          // Only scroll once per session/load
-          localStorage.removeItem("scrollPosition");
-        }, 100);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isGridLoading]);
 
   useEffect(() => {
     localStorage.setItem("searchQuery", searchQuery);
@@ -108,13 +96,7 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
           
-          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
+          <div ref={gridRef} />
   
           <VideoGrid 
             searchQuery={searchQuery} 
@@ -123,6 +105,14 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
             onTotalPagesChange={setTotalPages}
             onLoadingChange={setIsGridLoading}
           />
+
+          <div className="py-8 flex justify-center border-t border-border mt-8">
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages || 10} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
       </main>
     </div>
   );
