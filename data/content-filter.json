@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "defaultDeny": true,
+  "allowedCategories": [
+    "education",
+    "quran",
+    "programming",
+    "science",
+    "documentary",
+    "kids",
+    "language",
+    "history",
+    "health",
+    "mathematics",
+    "business",
+    "cooking",
+    "crafts",
+    "nature"
+  ],
+  "whitelist": [],
+  "blockedKeywords": [],
+  "maxResults": 50,
+  "pinCode": "1990"
+}
