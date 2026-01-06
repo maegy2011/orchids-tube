@@ -7,17 +7,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Timer, Moon, RefreshCcw, ShieldCheck } from 'lucide-react';
 
 export function WellBeingGuard({ children }: { children: React.ReactNode }) {
-    const { 
-      isLimitReached, 
-      isBedtime, 
-      isShortsLimitReached,
-      limits,
-      checkPin,
-      setParentalLocked,
-      isParentalLocked,
-      isGracePeriodActive
-    } = useWellBeing();
-
+  const { 
+    isLimitReached, 
+    isBedtime, 
+    isShortsLimitReached,
+    limits,
+    checkPin,
+    setParentalLocked,
+    isParentalLocked
+  } = useWellBeing();
   const { t, direction } = useI18n();
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [pin, setPin] = useState("");
@@ -39,8 +37,7 @@ export function WellBeingGuard({ children }: { children: React.ReactNode }) {
     }
   };
 
-    const activeLimit = (isLimitReached || isBedtime) && !isGracePeriodActive && isParentalLocked ? (isLimitReached ? 'time' : 'bedtime') : null;
-
+  const activeLimit = isLimitReached ? 'time' : isBedtime ? 'bedtime' : null;
 
   if (!activeLimit) return <>{children}</>;
 

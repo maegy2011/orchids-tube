@@ -20,5 +20,9 @@
   "whitelist": [],
   "blockedKeywords": [],
   "maxResults": 50,
+<<<<<<< Updated upstream
+  "pinCode": "1990"
+=======
   "pinCode": "0000"
+>>>>>>> Stashed changes
 }

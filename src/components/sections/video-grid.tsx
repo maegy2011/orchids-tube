@@ -76,8 +76,24 @@ export default function VideoGrid({
     // Keep track of tokens for each page to support going back/forth
     const pageTokens = useRef<Record<number, string | null>>({ 1: null });
     const [lastFetchedPage, setLastFetchedPage] = useState(0);
+    const [preloadedVideos, setPreloadedVideos] = useState<Video[]>([]);
+    const [isPreloading, setIsPreloading] = useState(false);
 
     const fetchVideos = useCallback(async (page: number, append: boolean = false) => {
+      // If we have preloaded videos for this page, use them!
+      if (append && preloadedVideos.length > 0 && page === lastFetchedPage + 1) {
+        setVideos(prev => [...prev, ...preloadedVideos]);
+        setLastFetchedPage(page);
+        setPreloadedVideos([]);
+        
+        // Trigger preloading for the NEXT page
+        const nextToken = pageTokens.current[page + 1];
+        if (nextToken) {
+          preloadNextPage(page + 1, nextToken);
+        }
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       try {
