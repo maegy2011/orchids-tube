@@ -96,7 +96,13 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
 
           <FeedFilterBar onCategoryChange={handleCategoryChange} />
           
-          <div ref={gridRef} />
+          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages || 10} 
+              onPageChange={handlePageChange} 
+            />
+          </div>
   
           <VideoGrid 
             searchQuery={searchQuery} 
@@ -105,14 +111,6 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
             onTotalPagesChange={setTotalPages}
             onLoadingChange={setIsGridLoading}
           />
-
-          <div className="py-8 flex justify-center border-t border-border mt-8">
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
       </main>
     </div>
   );
