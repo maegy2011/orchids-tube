@@ -107,6 +107,10 @@ export const translations = {
       timeLimitWarning: "اقتربت من الحد اليومي (بقي 5 دقائق)",
       breakReminder: "حان وقت استراحة قصيرة!",
       enableBedtime: "تفعيل وضع وقت النوم",
+      loadMoreMode: "طريقة تحميل الفيديوهات",
+      loadMoreAuto: "تلقائي (تمرير لا نهائي)",
+      loadMoreManual: "يدوي (زر تحميل المزيد)",
+      load_more: "تحميل المزيد من الفيديوهات",
     },
     en: {
     direction: "ltr",
@@ -214,6 +218,9 @@ export const translations = {
       timeLimitWarning: "Approaching daily time limit (5 minutes remaining)",
       breakReminder: "Time for a short break!",
       enableBedtime: "Enable Bedtime Mode",
+      loadMoreMode: "Video Loading Method",
+      loadMoreAuto: "Automatic (Infinite Scroll)",
+      loadMoreManual: "Manual (Load More Button)",
     },
     fr: {
     direction: "ltr",

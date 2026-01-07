@@ -44,7 +44,9 @@ export default function SettingsPage() {
     showRamadanCountdown: globalShowRamadan,
     setShowRamadanCountdown: setGlobalShowRamadan,
     hijriOffset: globalHijriOffset,
-    setHijriOffset: setGlobalHijriOffset
+    setHijriOffset: setGlobalHijriOffset,
+    loadMoreMode: globalLoadMoreMode,
+    setLoadMoreMode: setGlobalLoadMoreMode
   } = useI18n();
   
   const [tempLanguage, setTempLanguage] = useState<LanguageCode>(language);
@@ -54,6 +56,7 @@ export default function SettingsPage() {
   const [showHijri, setShowHijri] = useState(globalShowHijri);
   const [showRamadan, setShowRamadan] = useState(globalShowRamadan);
   const [hijriOffset, setHijriOffset] = useState(globalHijriOffset);
+  const [loadMoreMode, setLoadMoreModeState] = useState(globalLoadMoreMode);
 
   // Well-being local state
   const [wbLimits, setWbLimits] = useState<WellBeingLimits>(globalLimits);
@@ -75,9 +78,10 @@ export default function SettingsPage() {
       setShowHijri(globalShowHijri);
       setShowRamadan(globalShowRamadan);
       setHijriOffset(globalHijriOffset);
+      setLoadMoreModeState(globalLoadMoreMode);
       setWbLimits(globalLimits);
     }
-  }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLimits]);
+  }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLoadMoreMode, globalLimits]);
 
   const isRamadanCountdownVisible = showRamadan && daysUntilRamadan !== null && daysUntilRamadan > 0;
   const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
@@ -100,6 +104,7 @@ export default function SettingsPage() {
     setGlobalShowHijri(showHijri);
     setGlobalShowRamadan(showRamadan);
     setGlobalHijriOffset(hijriOffset);
+    setGlobalLoadMoreMode(loadMoreMode);
 
     // Well-being save
     setGlobalLimits(wbLimits);
@@ -286,6 +291,35 @@ export default function SettingsPage() {
                     inline-block h-4 w-4 transform rounded-full bg-background transition-transform shadow-sm border border-border
                   `} />
                 </button>
+              </div>
+            </div>
+
+            {/* Load More Mode */}
+            <div className="p-6 border-b border-border hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <PlayCircle className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{t('loadMoreMode')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('loadMoreAuto')} / {t('loadMoreManual')}</p>
+                  </div>
+                </div>
+                <div className="flex bg-muted p-1 rounded-xl">
+                  <button
+                    onClick={() => setLoadMoreModeState('auto')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${loadMoreMode === 'auto' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                  >
+                    {t('loadMoreAuto').split(' ')[0]}
+                  </button>
+                  <button
+                    onClick={() => setLoadMoreModeState('manual')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${loadMoreMode === 'manual' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                  >
+                    {t('loadMoreManual').split(' ')[0]}
+                  </button>
+                </div>
               </div>
             </div>
 
