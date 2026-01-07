@@ -88,7 +88,6 @@ export interface ContentFilterConfig {
   whitelist: WhitelistItem[];
   blockedKeywords: string[];
   maxResults: number;
-  pinCode?: string;
 }
 
 export interface FilterResult {

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Play, Clock, Eye, CheckCircle2, Check } from "lucide-react";
+import { Loader2, Play, Clock, Eye, Calendar, CheckCircle2, BookmarkPlus, BookmarkCheck, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n-context";
 import { useWatchLater } from "@/hooks/useWatchLater";
@@ -19,7 +19,7 @@ interface Video {
   channelName: string;
   channelAvatar: string;
   isVerified: boolean;
-  page?: number;
+  page?: number; // Keep track of which page this video belongs to
 }
 
 interface VideoGridProps {
@@ -30,14 +30,8 @@ interface VideoGridProps {
   onLoadingChange?: (loading: boolean) => void;
 }
 
-// Global cache for search results
-const searchCache: Record<string, { 
-  videos: Video[], 
-  token: string | null, 
-  totalPages: number,
-  timestamp: number 
-}> = {};
-
+// Simple in-memory cache for search results
+const searchCache: Record<string, { videos: Video[], tokens: Record<number, string | null>, timestamp: number }> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export default function VideoGrid({ 
@@ -52,17 +46,6 @@ export default function VideoGrid({
   const [error, setError] = useState<string | null>(null);
   const { language, location, restrictedMode, direction, t } = useI18n();
   const { toggleWatchLater, isInWatchLater } = useWatchLater();
-
-  const pageTokens = useRef<Record<number, string | null>>({ 1: null });
-  const lastFetchedPage = useRef(0);
-  const internalPageChange = useRef(false);
-  const isInitialMount = useRef(true);
-  const observerTarget = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
-
-  // Caching helper
-  const getCacheKey = (query: string, page: number) => 
-    `${query}-${location}-${language}-${restrictedMode}-${page}`;
 
   const handleWatchLaterClick = (e: React.MouseEvent, video: Video) => {
     e.preventDefault();
@@ -87,30 +70,26 @@ export default function VideoGrid({
     }
   };
   
+  // Notify parent of loading state changes
   useEffect(() => {
     if (onLoadingChange) {
       onLoadingChange(isLoading);
     }
   }, [isLoading, onLoadingChange]);
 
-  const fetchVideos = useCallback(async (page: number, append: boolean = false) => {
-    const cacheKey = getCacheKey(searchQuery || t("education") || "education", page);
-    const cached = searchCache[cacheKey];
+  // Keep track of tokens for each page to support going back/forth
+  const pageTokens = useRef<Record<number, string | null>>({ 1: null });
+  const [lastFetchedPage, setLastFetchedPage] = useState(0);
+  const preloadingRef = useRef<number | null>(null);
 
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      const newVideos = cached.videos.map(v => ({ ...v, page }));
-      if (append) {
-        setVideos(prev => {
-          const existingIds = new Set(prev.map(v => v.id));
-          const filtered = newVideos.filter(v => !existingIds.has(v.id));
-          return [...prev, ...filtered];
-        });
-      } else {
-        setVideos(newVideos);
-      }
-      if (cached.token) pageTokens.current[page + 1] = cached.token;
-      if (onTotalPagesChange) onTotalPagesChange(cached.totalPages);
-      lastFetchedPage.current = page;
+  const fetchVideos = useCallback(async (page: number, append: boolean = false) => {
+    // Check cache first if it's the first page or we are not appending
+    const cacheKey = `${searchQuery}-${language}-${location}-${restrictedMode}`;
+    if (!append && page === 1 && searchCache[cacheKey] && (Date.now() - searchCache[cacheKey].timestamp < CACHE_TTL)) {
+      setVideos(searchCache[cacheKey].videos);
+      pageTokens.current = { ...searchCache[cacheKey].tokens };
+      setLastFetchedPage(1);
+      if (onTotalPagesChange) onTotalPagesChange(100);
       return;
     }
 
@@ -126,7 +105,9 @@ export default function VideoGrid({
       url.searchParams.set("restricted", String(restrictedMode));
     
       const token = pageTokens.current[page];
-      if (token) url.searchParams.set("token", token);
+      if (token) {
+        url.searchParams.set("token", token);
+      }
       
       url.searchParams.set("limit", "30");
       url.searchParams.set("page", page.toString());
@@ -137,34 +118,39 @@ export default function VideoGrid({
       const data = await response.json();
       const newVideos = (data.videos || []).map((v: any) => ({ ...v, page }));
       
-      const totalPages = data.hasMore ? Math.max(page + 10, 100) : page;
-
-      // Cache the result
+      let updatedVideos: Video[] = [];
+      if (append) {
+        updatedVideos = [...videos, ...newVideos];
+        setVideos(updatedVideos);
+      } else {
+        updatedVideos = newVideos;
+        setVideos(updatedVideos);
+      }
+      
+      // Store the token for the NEXT page
+      if (data.continuationToken) {
+        pageTokens.current[page + 1] = data.continuationToken;
+      }
+      
+      // Update cache
       searchCache[cacheKey] = {
-        videos: newVideos,
-        token: data.continuationToken || null,
-        totalPages,
+        videos: updatedVideos,
+        tokens: { ...pageTokens.current },
         timestamp: Date.now()
       };
 
-      if (append) {
-        setVideos(prev => {
-          const existingIds = new Set(prev.map(v => v.id));
-          const filtered = newVideos.filter(v => !existingIds.has(v.id));
-          return [...prev, ...filtered];
-        });
-      } else {
-        setVideos(newVideos);
+      if (onTotalPagesChange) {
+        onTotalPagesChange(data.hasMore ? Math.max(page + 10, 100) : page);
       }
       
-      if (data.continuationToken) {
-        pageTokens.current[page + 1] = data.continuationToken;
-        // Preload next page
-        preloadNextPage(page + 1);
+      setLastFetchedPage(page);
+
+      // Preload next page if available
+      if (data.hasMore && data.continuationToken && preloadingRef.current !== page + 1) {
+        preloadingRef.current = page + 1;
+        // Pre-fetch next page data in background (not actually setting state, just hitting API to cache server-side or prepare)
+        // For simplicity, we just know we have the token ready.
       }
-      
-      if (onTotalPagesChange) onTotalPagesChange(totalPages);
-      lastFetchedPage.current = page;
 
     } catch (err) {
       console.error("Error fetching videos:", err);
@@ -172,218 +158,65 @@ export default function VideoGrid({
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, location, language, restrictedMode, onTotalPagesChange, t]);
+  }, [searchQuery, location, restrictedMode, onTotalPagesChange, language, t, videos]);
 
-  const preloadNextPage = useCallback(async (page: number) => {
-    const cacheKey = getCacheKey(searchQuery || t("education") || "education", page);
-    if (searchCache[cacheKey]) return;
-
-    const token = pageTokens.current[page];
-    if (!token) return;
-
-    try {
-      const defaultQuery = t("education") || "education";
-      const q = searchQuery || defaultQuery;
-      const url = new URL("/api/videos/search", window.location.origin);
-      url.searchParams.set("q", q);
-      url.searchParams.set("location", location);
-      url.searchParams.set("language", language);
-      url.searchParams.set("restricted", String(restrictedMode));
-      url.searchParams.set("token", token);
-      url.searchParams.set("limit", "30");
-      url.searchParams.set("page", page.toString());
-
-      const response = await fetch(url.toString());
-      if (response.ok) {
-        const data = await response.json();
-        const newVideos = (data.videos || []).map((v: any) => ({ ...v, page }));
-        const totalPages = data.hasMore ? Math.max(page + 10, 100) : page;
-        
-        searchCache[cacheKey] = {
-          videos: newVideos,
-          token: data.continuationToken || null,
-          totalPages,
-          timestamp: Date.now()
-        };
-        if (data.continuationToken) {
-          pageTokens.current[page + 1] = data.continuationToken;
-        }
-      }
-    } catch (e) {
-      // Preload failed silently
-    }
-  }, [searchQuery, location, language, restrictedMode, t]);
-
+  // Reset tokens and fetch page 1 when search query or location changes
   useEffect(() => {
     pageTokens.current = { 1: null };
-    lastFetchedPage.current = 0;
+    setVideos([]);
     fetchVideos(1, false);
-    if (onPageChange && currentPage !== 1) {
-      internalPageChange.current = true;
-      onPageChange(1);
-    }
-  }, [searchQuery, location, restrictedMode, fetchVideos]);
-
-  useEffect(() => {
-    if (currentPage !== lastFetchedPage.current && currentPage > 0) {
-      if (internalPageChange.current) {
-        internalPageChange.current = false;
-        return;
-      }
-      // If the user clicked a page in pagination, we reset and fetch that page
-      fetchVideos(currentPage, false);
-    }
-  }, [currentPage, fetchVideos]);
+  }, [searchQuery, location, restrictedMode]);
 
   const loadMore = useCallback(() => {
     if (isLoading) return;
-    const nextPage = lastFetchedPage.current + 1;
-    if (pageTokens.current[nextPage]) {
+    const nextPage = lastFetchedPage + 1;
+    if (pageTokens.current[nextPage] || nextPage === 1) {
       fetchVideos(nextPage, true);
     }
-  }, [isLoading, fetchVideos]);
+  }, [lastFetchedPage, isLoading, fetchVideos]);
 
-  // Infinite scroll observer
+  const observerTarget = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoading && videos.length > 0) {
+        if (entries[0].isIntersecting && !isLoading) {
           loadMore();
         }
       },
-      { threshold: 0.1, rootMargin: "800px" }
+      { threshold: 0.1, rootMargin: "400px" }
     );
 
-    if (observerTarget.current) observer.observe(observerTarget.current);
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
     return () => observer.disconnect();
-  }, [isLoading, videos.length, loadMore]);
+  }, [isLoading, loadMore]);
 
-  // Page tracking observer to update pagination bar
+  // Track visible page for pagination sync
+  const videoRefs = useRef<Record<string, HTMLDivElement | null>>({});
   useEffect(() => {
-    const observer = new IntersectionObserver(
+    const pageObserver = new IntersectionObserver(
       (entries) => {
-        // Find the page that is most visible in the viewport
-        const visibleEntry = entries.reduce((prev, curr) => {
-          return (curr.intersectionRatio > prev.intersectionRatio) ? curr : prev;
-        });
-
-        if (visibleEntry && visibleEntry.isIntersecting && onPageChange) {
-          const pageNum = parseInt(visibleEntry.target.getAttribute("data-page") || "1");
-          if (pageNum !== currentPage) {
-            internalPageChange.current = true;
-            onPageChange(pageNum);
+        const visibleEntry = entries.find(entry => entry.isIntersecting);
+        if (visibleEntry) {
+          const videoId = visibleEntry.target.getAttribute('data-video-id');
+          const video = videos.find(v => v.id === videoId);
+          if (video?.page && onPageChange && video.page !== currentPage) {
+            onPageChange(video.page);
           }
         }
       },
-      { threshold: [0, 0.25, 0.5, 0.75, 1.0], rootMargin: "-10% 0px -10% 0px" }
+      { threshold: 0.5, rootMargin: "-10% 0px -80% 0px" }
     );
 
-    Object.values(pageRefs.current).forEach(ref => {
-      if (ref) observer.observe(ref);
+    Object.values(videoRefs.current).forEach(ref => {
+      if (ref) pageObserver.observe(ref);
     });
 
-    return () => observer.disconnect();
+    return () => pageObserver.disconnect();
   }, [videos, onPageChange, currentPage]);
-
-  const renderVideo = (video: Video, index: number) => (
-    <motion.div
-      key={`${video.id}-${index}`}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.3, delay: (index % 15) * 0.05 }}
-    >
-      <Link href={`/watch/${video.id}`} className="group flex flex-col gap-3">
-        <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all duration-300 group-hover:rounded-none">
-          <img
-            src={video.thumbnail}
-            alt={video.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-          <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[12px] font-bold px-1.5 py-0.5 rounded-md">
-            {video.duration}
-          </div>
-          
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => handleWatchLaterClick(e, video)}
-            className={cn(
-              "absolute top-2 right-2 p-1.5 rounded-md transition-all duration-300 z-10",
-              "opacity-0 group-hover:opacity-100",
-              isInWatchLater(video.id) 
-                ? "bg-blue-600 text-white shadow-lg" 
-                : "bg-black/60 text-white hover:bg-black/80"
-            )}
-            title={t("watch_later") || "مشاهدة لاحقاً"}
-          >
-            <AnimatePresence mode="wait">
-              {isInWatchLater(video.id) ? (
-                <motion.div
-                  key="checked"
-                  initial={{ scale: 0, rotate: -45 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: 45 }}
-                >
-                  <Check size={18} />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="plus"
-                  initial={{ scale: 0, rotate: 45 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: -45 }}
-                >
-                  <Clock size={18} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
-
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-            <Play className="text-white opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 drop-shadow-lg" size={48} fill="currentColor" />
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="shrink-0">
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-muted border border-border">
-              <img
-                src={video.channelAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(video.channelName)}&background=random`}
-                alt={video.channelName}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1 overflow-hidden">
-            <h3 className="text-[16px] font-bold text-foreground leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
-              {video.title}
-            </h3>
-            <div className="flex flex-col text-[14px] text-muted-foreground">
-              <div className="flex items-center gap-1 hover:text-foreground transition-colors">
-                <span className="truncate">{video.channelName}</span>
-                {video.isVerified && <CheckCircle2 size={14} className="text-muted-foreground fill-muted-foreground/10" />}
-              </div>
-              <div className="flex items-center gap-1">
-                <span>{video.views} مشاهدة</span>
-                <span className="before:content-['•'] before:mx-1">{video.uploadedAt}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  );
-
-  // Group videos by page for intersection observing
-  const videosByPage: Record<number, Video[]> = {};
-  videos.forEach(v => {
-    const p = v.page || 1;
-    if (!videosByPage[p]) videosByPage[p] = [];
-    videosByPage[p].push(v);
-  });
 
   if (error && videos.length === 0) {
     return (
@@ -392,7 +225,7 @@ export default function VideoGrid({
           <p className="text-destructive font-medium">{error}</p>
         </div>
         <button 
-          onClick={() => fetchVideos(currentPage)}
+          onClick={() => fetchVideos(1)}
           className="px-6 py-2 bg-foreground text-background rounded-full hover:bg-foreground/90 transition-all active:scale-95"
         >
           إعادة المحاولة
@@ -419,25 +252,111 @@ export default function VideoGrid({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-8">
-          {Object.entries(videosByPage).map(([pageStr, pageVideos]) => (
-            <div 
-              key={pageStr} 
-              data-page={pageStr}
-              ref={el => { pageRefs.current[parseInt(pageStr)] = el; }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8"
-            >
-              {pageVideos.map((video, idx) => renderVideo(video, idx))}
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8">
+          <AnimatePresence mode="popLayout">
+            {videos.map((video, index) => (
+              <motion.div
+                key={`${video.id}-${index}`}
+                ref={el => videoRefs.current[video.id] = el as any}
+                data-video-id={video.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3, delay: (index % 20) * 0.05 }}
+              >
+                <Link href={`/watch/${video.id}`} className="group flex flex-col gap-3">
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-muted shadow-sm transition-all duration-300 group-hover:rounded-none">
+                    <img
+                      src={video.thumbnail}
+                      alt={video.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[12px] font-bold px-1.5 py-0.5 rounded-md">
+                        {video.duration}
+                      </div>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => handleWatchLaterClick(e, video)}
+                        className={cn(
+                          "absolute top-2 right-2 p-1.5 rounded-md transition-all duration-300 z-10",
+                          "opacity-0 group-hover:opacity-100",
+                          isInWatchLater(video.id) 
+                            ? "bg-blue-600 text-white shadow-lg" 
+                            : "bg-black/60 text-white hover:bg-black/80"
+                        )}
+                        title={t("watch_later") || "مشاهدة لاحقاً"}
+                      >
+                        <AnimatePresence mode="wait">
+                          {isInWatchLater(video.id) ? (
+                            <motion.div
+                              key="checked"
+                              initial={{ scale: 0, rotate: -45 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              exit={{ scale: 0, rotate: 45 }}
+                            >
+                              <Check size={18} />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="plus"
+                              initial={{ scale: 0, rotate: 45 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              exit={{ scale: 0, rotate: -45 }}
+                            >
+                              <Clock size={18} />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.button>
+
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <Play className="text-white opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 drop-shadow-lg" size={48} fill="currentColor" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="shrink-0">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-muted border border-border">
+                        <img
+                          src={video.channelAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(video.channelName)}&background=random`}
+                          alt={video.channelName}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1 overflow-hidden">
+                      <h3 className="text-[16px] font-bold text-foreground leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                        {video.title}
+                      </h3>
+                      <div className="flex flex-col text-[14px] text-muted-foreground">
+                        <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                          <span className="truncate">{video.channelName}</span>
+                          {video.isVerified && <CheckCircle2 size={14} className="text-muted-foreground fill-muted-foreground/10" />}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>{video.views} مشاهدة</span>
+                          <span className="before:content-['•'] before:mx-1">{video.uploadedAt}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
 
+      {/* Infinite Scroll Trigger */}
       <div ref={observerTarget} className="h-20 flex items-center justify-center mt-8">
         {isLoading && videos.length > 0 && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            <span>جاري تحميل المزيد...</span>
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+            <p className="text-xs text-muted-foreground font-medium">جاري تحميل المزيد...</p>
           </div>
         )}
       </div>

@@ -19,11 +19,7 @@ interface WellBeingContextType {
   continuousWatchTime: number;
   isBedtime: boolean;
   limits: WellBeingLimits;
-  isParentalLocked: boolean;
   setLimits: (limits: WellBeingLimits) => void;
-  setParentalLocked: (locked: boolean) => void;
-  checkPin: (pin: string) => boolean;
-  setPin: (pin: string) => void;
   incrementShortsCount: () => void;
   resetContinuousTime: () => void;
   isLimitReached: boolean;
@@ -47,20 +43,12 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
   const [dailyShortsCount, setDailyShortsCount] = useState(0);
   const [continuousWatchTime, setContinuousWatchTime] = useState(0);
   const [limits, setLimitsState] = useState<WellBeingLimits>(DEFAULT_LIMITS);
-  const [isParentalLocked, setParentalLockedState] = useState(false);
-  const [pin, setPinState] = useState("0000");
   const [lastTrackedMinute, setLastTrackedMinute] = useState(new Date().getMinutes());
 
   // Load from localStorage
   useEffect(() => {
     const savedLimits = localStorage.getItem('wb-limits');
     if (savedLimits) setLimitsState(JSON.parse(savedLimits));
-
-    const savedLocked = localStorage.getItem('wb-locked');
-    if (savedLocked) setParentalLockedState(savedLocked === 'true');
-
-    const savedPin = localStorage.getItem('wb-pin');
-    if (savedPin) setPinState(savedPin);
 
     const today = new Date().toDateString();
     const savedDate = localStorage.getItem('wb-date');
@@ -101,18 +89,6 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('wb-limits', JSON.stringify(newLimits));
   };
 
-  const setParentalLocked = (locked: boolean) => {
-    setParentalLockedState(locked);
-    localStorage.setItem('wb-locked', String(locked));
-  };
-
-  const setPin = (newPin: string) => {
-    setPinState(newPin);
-    localStorage.setItem('wb-pin', newPin);
-  };
-
-  const checkPin = (enteredPin: string) => enteredPin === pin;
-
   const incrementShortsCount = useCallback(() => {
     setDailyShortsCount(prev => {
       const newVal = prev + 1;
@@ -137,8 +113,7 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
       const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
-      const currentTimeStr = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}`;
-
+      
       const [startH, startM] = limits.bedtimeStart.split(':').map(Number);
       const [endH, endM] = limits.bedtimeEnd.split(':').map(Number);
 
@@ -169,7 +144,6 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
     }
     
     if (limits.breakInterval > 0 && continuousWatchTime >= limits.breakInterval) {
-      // This should probably be handled by a modal if it's a hard break, but for now a toast
       toast.info(t('breakReminder') || "Time for a short break!");
     }
   }, [dailyWatchTime, continuousWatchTime, limits.dailyTimeLimit, limits.breakInterval, t]);
@@ -181,11 +155,7 @@ export function WellBeingProvider({ children }: { children: ReactNode }) {
       continuousWatchTime,
       isBedtime,
       limits,
-      isParentalLocked,
       setLimits,
-      setParentalLocked,
-      checkPin,
-      setPin,
       incrementShortsCount,
       resetContinuousTime,
       isLimitReached,

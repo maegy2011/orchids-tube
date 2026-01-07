@@ -12,7 +12,7 @@ import { LanguageCode } from "@/lib/translations";
 import { useRouter } from "next/navigation";
 import { getDaysUntilRamadan } from "@/lib/date-utils";
 import { useWellBeing, WellBeingLimits } from "@/lib/well-being-context";
-import { Lock, Timer, Moon as MoonIcon, ShieldCheck, PlayCircle, Eye, Bell } from "lucide-react";
+import { Timer, Moon as MoonIcon, ShieldCheck, PlayCircle, Bell } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -26,10 +26,6 @@ export default function SettingsPage() {
   const { 
     limits: globalLimits,
     setLimits: setGlobalLimits,
-    isParentalLocked: globalLocked,
-    setParentalLocked: setGlobalLocked,
-    checkPin,
-    setPin: setGlobalPin
   } = useWellBeing();
 
   const { 
@@ -61,12 +57,6 @@ export default function SettingsPage() {
 
   // Well-being local state
   const [wbLimits, setWbLimits] = useState<WellBeingLimits>(globalLimits);
-  const [isLocked, setIsLocked] = useState(globalLocked);
-  const [showPinDialog, setShowPinDialog] = useState(false);
-  const [pinInput, setPinInput] = useState("");
-  const [pinError, setPinError] = useState(false);
-  const [newPin, setNewPin] = useState("");
-  const [isChangingPin, setIsChangingPin] = useState(false);
 
   const isRTL = direction === 'rtl';
 
@@ -86,29 +76,13 @@ export default function SettingsPage() {
       setShowRamadan(globalShowRamadan);
       setHijriOffset(globalHijriOffset);
       setWbLimits(globalLimits);
-      setIsLocked(globalLocked);
     }
-  }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLimits, globalLocked]);
+  }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLimits]);
 
   const isRamadanCountdownVisible = showRamadan && daysUntilRamadan !== null && daysUntilRamadan > 0;
   const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
 
-  const handlePinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (checkPin(pinInput)) {
-      setIsLocked(false);
-      setShowPinDialog(false);
-      setPinInput("");
-      setPinError(false);
-    } else {
-      setPinError(true);
-      setPinInput("");
-      setTimeout(() => setPinError(false), 500);
-    }
-  };
-
   const handleThemeChange = (newTheme: string) => {
-    // Force instant switch by disabling all transitions
     document.documentElement.classList.add('no-transitions')
     setTheme(newTheme);
     setTimeout(() => {
@@ -129,13 +103,6 @@ export default function SettingsPage() {
 
     // Well-being save
     setGlobalLimits(wbLimits);
-    if (!isLocked) {
-      setGlobalLocked(true); // Re-lock after saving
-      setIsLocked(true);
-    }
-    if (newPin.length === 4) {
-      setGlobalPin(newPin);
-    }
 
     setTimeout(() => {
       setIsSaving(false);
@@ -429,18 +396,9 @@ export default function SettingsPage() {
                       <p className="text-sm text-muted-foreground">{t('parentalControls')}</p>
                     </div>
                   </div>
-                  {isLocked && (
-                    <button 
-                      onClick={() => setShowPinDialog(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-all font-semibold text-sm"
-                    >
-                      <Lock className="w-4 h-4" />
-                      {t('unlock')}
-                    </button>
-                  )}
                 </div>
 
-                <div className={`space-y-6 transition-all duration-500 ${isLocked ? 'blur-md pointer-events-none opacity-50' : 'blur-0'}`}>
+                <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                     {/* Daily Watch Limit */}
                     <div className="space-y-3">
@@ -552,29 +510,6 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
-
-                  <div className="pt-4 border-t border-border/50">
-                    <button 
-                      onClick={() => setIsChangingPin(!isChangingPin)}
-                      className="text-sm font-medium text-primary hover:underline"
-                    >
-                      {isChangingPin ? "Cancel PIN Change" : "Change Parental PIN"}
-                    </button>
-                    
-                    {isChangingPin && (
-                      <div className="mt-4 space-y-2 max-w-[200px]">
-                        <label className="text-xs font-medium text-muted-foreground">New 4-Digit PIN</label>
-                        <input 
-                          type="password" 
-                          maxLength={4}
-                          value={newPin}
-                          onChange={(e) => setNewPin(e.target.value)}
-                          className="w-full bg-muted border-none rounded-xl px-4 py-2 text-center text-lg tracking-[0.5em] font-mono outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="****"
-                        />
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -617,60 +552,6 @@ export default function SettingsPage() {
           <CheckCircle2 className="w-6 h-6" />
           <span className="font-bold">{t('savedSuccessfully')}</span>
         </motion.div>
-      )}
-    </AnimatePresence>
-
-    {/* PIN Dialog */}
-    <AnimatePresence>
-      {showPinDialog && (
-        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center p-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-card border border-border rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-6"
-          >
-            <div className="text-center space-y-2">
-              <div className="flex justify-center">
-                <div className="p-3 bg-primary/10 rounded-full">
-                  <Lock className="w-8 h-8 text-primary" />
-                </div>
-              </div>
-              <h2 className="text-xl font-bold">{t('parentalControls')}</h2>
-              <p className="text-sm text-muted-foreground">{t('enterParentalPin')}</p>
-            </div>
-
-            <form onSubmit={handlePinSubmit} className="space-y-4">
-              <input
-                type="password"
-                maxLength={4}
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                autoFocus
-                className={`
-                  w-full bg-muted border-none rounded-2xl px-4 py-4 text-center text-2xl tracking-[1em] font-mono focus:ring-2 focus:ring-primary outline-none transition-all
-                  ${pinError ? 'ring-2 ring-destructive animate-shake' : ''}
-                `}
-                placeholder="****"
-              />
-              <div className="flex gap-2">
-                <button 
-                  type="button"
-                  onClick={() => setShowPinDialog(false)}
-                  className="flex-1 py-3 bg-muted rounded-xl font-medium"
-                >
-                  {t('cancel')}
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold"
-                >
-                  {t('unlock')}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
       )}
     </AnimatePresence>
   </div>

@@ -255,18 +255,6 @@ export function setDefaultDeny(deny: boolean): void {
   saveFilterConfig(config);
 }
 
-export function setPinCode(pinCode: string | undefined): void {
-  const config = loadFilterConfig();
-  config.pinCode = pinCode;
-  saveFilterConfig(config);
-}
-
-export function verifyPinCode(pinCode: string): boolean {
-  const config = loadFilterConfig();
-  if (!config.pinCode) return true;
-  return config.pinCode === pinCode;
-}
-
 export function getFilterStats(): {
   totalWhitelisted: number;
   whitelistedByType: Record<ContentType, number>;

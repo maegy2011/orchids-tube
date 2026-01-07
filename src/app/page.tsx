@@ -9,24 +9,22 @@ import Pagination from "@/components/sections/pagination";
 import { useI18n } from "@/lib/i18n-context";
 import { getDaysUntilRamadan } from "@/lib/date-utils";
 
-    export default function Home() {
-      const [searchQuery, setSearchQuery] = useState("");
-      const [sidebarOpen, setSidebarOpen] = useState(false);
-      const [currentPage, setCurrentPage] = useState(1);
-      const [totalPages, setTotalPages] = useState(50);
-      const [isGridLoading, setIsGridLoading] = useState(false);
-      const [daysUntilRamadan, setDaysUntilRamadan] = useState<number | null>(null);
-      const { showRamadanCountdown } = useI18n();
-      const gridRef = useRef<HTMLDivElement>(null);
+export default function Home() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(50);
+  const [isGridLoading, setIsGridLoading] = useState(false);
+  const [daysUntilRamadan, setDaysUntilRamadan] = useState<number | null>(null);
+  const { showRamadanCountdown } = useI18n();
+  const gridRef = useRef<HTMLDivElement>(null);
 
-      useEffect(() => {
-        setDaysUntilRamadan(getDaysUntilRamadan());
-      }, []);
+  useEffect(() => {
+    setDaysUntilRamadan(getDaysUntilRamadan());
+  }, []);
 
-      const isRamadanCountdownVisible = showRamadanCountdown && daysUntilRamadan !== null && daysUntilRamadan > 0;
-      const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
-
-
+  const isRamadanCountdownVisible = showRamadanCountdown && daysUntilRamadan !== null && daysUntilRamadan > 0;
+  const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
 
   // Persistence to "save scroll position" and state
   useEffect(() => {
@@ -61,7 +59,7 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Move to top of video grid when navigating to other page
+    // Move to top of video grid when navigating to other page manually
     if (gridRef.current) {
       const headerOffset = 80;
       const elementPosition = gridRef.current.getBoundingClientRect().top;
@@ -84,33 +82,33 @@ import { getDaysUntilRamadan } from "@/lib/date-utils";
     setCurrentPage(1);
   };
 
-    return (
-      <div className="min-h-screen bg-background">
-        <Masthead 
-          onSearch={handleSearch} 
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
-          externalLoading={isGridLoading}
-        />
-          <SidebarGuide isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300`}>
-
-          <FeedFilterBar onCategoryChange={handleCategoryChange} />
-          
-          <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border">
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages || 10} 
-              onPageChange={handlePageChange} 
-            />
-          </div>
-  
-          <VideoGrid 
-            searchQuery={searchQuery} 
+  return (
+    <div className="min-h-screen bg-background">
+      <Masthead 
+        onSearch={handleSearch} 
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+        externalLoading={isGridLoading}
+      />
+      <SidebarGuide isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      
+      <main className={`mr-0 lg:mr-[240px] ${mainPaddingTop} transition-all duration-300`}>
+        <FeedFilterBar onCategoryChange={handleCategoryChange} />
+        
+        <div ref={gridRef} className="pt-6 flex justify-center pb-4 border-b border-border sticky top-[64px] z-30 bg-background/95 backdrop-blur-sm">
+          <Pagination 
             currentPage={currentPage} 
-            onPageChange={setCurrentPage}
-            onTotalPagesChange={setTotalPages}
-            onLoadingChange={setIsGridLoading}
+            totalPages={totalPages || 10} 
+            onPageChange={handlePageChange} 
           />
+        </div>
+
+        <VideoGrid 
+          searchQuery={searchQuery} 
+          currentPage={currentPage} 
+          onPageChange={setCurrentPage} // Sync page from grid scroll
+          onTotalPagesChange={setTotalPages}
+          onLoadingChange={setIsGridLoading}
+        />
       </main>
     </div>
   );

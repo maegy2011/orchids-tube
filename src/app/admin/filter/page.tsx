@@ -22,17 +22,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Settings2,
-  ArrowRight,
-  Lock,
-  Unlock,
-  KeyRound,
-  Fingerprint
+  ArrowRight
 } from 'lucide-react';
-import { 
-  InputOTP, 
-  InputOTPGroup, 
-  InputOTPSlot 
-} from "@/components/ui/input-otp";
 import { ContentFilterConfig, WhitelistItem, AllowedCategory, ContentType } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -106,14 +97,6 @@ export default function ContentFilterAdminPage() {
   const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
   const headerTop = isRamadanCountdownVisible ? 'top-[40px] sm:top-[36px]' : 'top-0';
   
-  // PIN related states
-  const [hasPin, setHasPin] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [newPinInput, setNewPinInput] = useState('');
-  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
-  const [pinAction, setPinAction] = useState<'setup' | 'update' | 'remove' | 'verify'>('verify');
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [newWhitelistItem, setNewWhitelistItem] = useState({
     youtubeId: '',
@@ -141,14 +124,9 @@ export default function ContentFilterAdminPage() {
       const keywordsData = await keywordsRes.json();
 
       setConfig(configData.config);
-      setHasPin(configData.hasPin);
       setCategories(categoriesData.categories || []);
       setWhitelist(whitelistData.whitelist || []);
       setBlockedKeywords(keywordsData.keywords || []);
-      
-      if (!configData.hasPin) {
-        setIsUnlocked(true);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('فشل في تحميل البيانات');
@@ -168,7 +146,7 @@ export default function ContentFilterAdminPage() {
       const res = await fetch('/api/filter', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled, pin: pinInput }),
+        body: JSON.stringify({ enabled }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -191,7 +169,7 @@ export default function ContentFilterAdminPage() {
       const res = await fetch('/api/filter', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ defaultDeny, pin: pinInput }),
+        body: JSON.stringify({ defaultDeny }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -313,65 +291,6 @@ export default function ContentFilterAdminPage() {
     }
   };
 
-  const verifyPin = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/filter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify', pin: pinInput }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsUnlocked(true);
-        toast.success('تم فتح القفل بنجاح');
-      } else {
-        toast.error('الرمز السري غير صحيح');
-        setPinInput('');
-      }
-    } catch (error) {
-      toast.error('حدث خطأ أثناء التحقق');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePinAction = async () => {
-    if (!newPinInput && pinAction !== 'remove') {
-      toast.error('يرجى إدخال الرمز السري الجديد');
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch('/api/filter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: pinAction, 
-          pin: pinInput, 
-          newPin: newPinInput 
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(
-          pinAction === 'setup' ? 'تم إعداد الرمز السري' : 
-          pinAction === 'update' ? 'تم تحديث الرمز السري' : 'تم إزالة الرمز السري'
-        );
-        setIsPinDialogOpen(false);
-        setPinInput('');
-        setNewPinInput('');
-        fetchData();
-      } else {
-        toast.error(data.error || 'فشلت العملية');
-      }
-    } catch (error) {
-      toast.error('حدث خطأ ما');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const getTypeIcon = (type: ContentType) => {
     switch (type) {
       case 'video': return <Video className="w-4 h-4" />;
@@ -411,60 +330,6 @@ export default function ContentFilterAdminPage() {
     );
   }
 
-  if (!isUnlocked) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" dir="rtl">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
-          <Card className="border-border shadow-2xl">
-            <CardHeader className="text-center space-y-4">
-              <div className="mx-auto bg-red-600/10 w-20 h-20 rounded-full flex items-center justify-center">
-                <Lock className="w-10 h-10 text-red-600" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl">نظام التصفية مغلق</CardTitle>
-                <CardDescription>أدخل الرمز السري للوصول إلى الإعدادات</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-8 py-8" dir="ltr">
-              <InputOTP 
-                maxLength={4} 
-                value={pinInput} 
-                onChange={setPinInput}
-                onComplete={verifyPin}
-                type="password"
-              >
-                <InputOTPGroup className="gap-2">
-                  <InputOTPSlot index={0} className="w-12 h-16 text-2xl border-2" />
-                  <InputOTPSlot index={1} className="w-12 h-16 text-2xl border-2" />
-                  <InputOTPSlot index={2} className="w-12 h-16 text-2xl border-2" />
-                  <InputOTPSlot index={3} className="w-12 h-16 text-2xl border-2" />
-                </InputOTPGroup>
-              </InputOTP>
-              
-              <Button 
-                onClick={verifyPin}
-                disabled={saving || pinInput.length < 4}
-                className="w-full h-12 text-lg bg-red-600 hover:bg-red-700"
-              >
-                {saving ? <RefreshCw className="w-6 h-6 animate-spin" /> : "فتح القفل الآن"}
-              </Button>
-            </CardContent>
-            <CardFooter className="justify-center border-t border-border pt-6">
-              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
-                <ArrowRight className="w-4 h-4" />
-                <span>العودة للرئيسية</span>
-              </Link>
-            </CardFooter>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-red-500/30 pb-20 md:pb-0" dir="rtl">
       <Toaster position="top-center" />
@@ -486,15 +351,6 @@ export default function ContentFilterAdminPage() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsUnlocked(false)}
-              className="gap-2 border-border hover:bg-muted text-xs"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>إغلاق النظام</span>
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -647,65 +503,6 @@ export default function ContentFilterAdminPage() {
                         onCheckedChange={toggleDefaultDeny}
                         disabled={saving}
                       />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* PIN Management */}
-                <Card className="bg-card border-border">
-                  <CardHeader>
-                    <div className="flex items-center gap-2 mb-1">
-                      <KeyRound className="w-5 h-5 text-red-600" />
-                      <CardTitle className="text-lg">الرمز السري</CardTitle>
-                    </div>
-                    <CardDescription>قم بتعيين رمز سري لحماية الإعدادات من التغيير العبثي</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
-                      <div className="space-y-1">
-                        <p className="font-bold">{hasPin ? 'النظام محمي برمز سري' : 'النظام غير محمي'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {hasPin ? 'يجب إدخال الرمز السري عند كل دخول أو تغيير للإعدادات' : 'ينصح بإضافة رمز سري لزيادة الأمان'}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        {hasPin ? (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => {
-                                setPinAction('update');
-                                setIsPinDialogOpen(true);
-                              }}
-                              className="border-border hover:bg-muted"
-                            >
-                              تغيير الرمز
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setPinAction('remove');
-                                setIsPinDialogOpen(true);
-                              }}
-                              className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                            >
-                              إزالة الرمز
-                            </Button>
-                          </>
-                        ) : (
-                          <Button 
-                            onClick={() => {
-                              setPinAction('setup');
-                              setIsPinDialogOpen(true);
-                            }}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            إعداد الرمز السري
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -977,65 +774,6 @@ export default function ContentFilterAdminPage() {
           </AnimatePresence>
         </Tabs>
       </main>
-
-      {/* PIN Dialog */}
-      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
-        <DialogContent className="bg-card border-border text-foreground max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {pinAction === 'setup' ? 'إعداد رمز سري' : 
-               pinAction === 'update' ? 'تحديث الرمز السري' : 'إزالة الرمز السري'}
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              {pinAction === 'setup' ? 'أدخل رمزاً مكوناً من 4 أرقام' : 
-               pinAction === 'update' ? 'أدخل الرمز الحالي ثم الجديد' : 'أدخل الرمز الحالي للتأكيد'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex flex-col items-center gap-6 py-4" dir="ltr">
-            {(pinAction === 'update' || pinAction === 'remove') && (
-              <div className="space-y-2 w-full flex flex-col items-center">
-                <label className="text-xs font-bold text-muted-foreground" dir="rtl">الرمز الحالي</label>
-                <InputOTP maxLength={4} value={pinInput} onChange={setPinInput}>
-                  <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={0} className="w-10 h-12 border-2" />
-                    <InputOTPSlot index={1} className="w-10 h-12 border-2" />
-                    <InputOTPSlot index={2} className="w-10 h-12 border-2" />
-                    <InputOTPSlot index={3} className="w-10 h-12 border-2" />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-            )}
-            
-            {(pinAction === 'setup' || pinAction === 'update') && (
-              <div className="space-y-2 w-full flex flex-col items-center">
-                <label className="text-xs font-bold text-muted-foreground" dir="rtl">
-                  {pinAction === 'setup' ? 'الرمز السري' : 'الرمز الجديد'}
-                </label>
-                <InputOTP maxLength={4} value={newPinInput} onChange={setNewPinInput} type="password">
-                  <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={0} className="w-10 h-12 border-2" />
-                    <InputOTPSlot index={1} className="w-10 h-12 border-2" />
-                    <InputOTPSlot index={2} className="w-10 h-12 border-2" />
-                    <InputOTPSlot index={3} className="w-10 h-12 border-2" />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setIsPinDialogOpen(false)} className="hover:bg-muted">إلغاء</Button>
-            <Button 
-              onClick={handlePinAction} 
-              disabled={saving || (pinAction === 'setup' && newPinInput.length < 4) || ((pinAction === 'update' || pinAction === 'remove') && pinInput.length < 4)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : "تأكيد"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Mobile Footer Stats */}
       <footer className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-xl border-t border-border p-4 md:hidden z-50">
