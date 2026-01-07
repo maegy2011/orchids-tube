@@ -41,23 +41,19 @@ export default function SettingsPage() {
     setShowGregorianDate: setGlobalShowGregorian,
     showHijriDate: globalShowHijri,
     setShowHijriDate: setGlobalShowHijri,
-      showRamadanCountdown: globalShowRamadan,
-      setShowRamadanCountdown: setGlobalShowRamadan,
-      hijriOffset: globalHijriOffset,
-      setHijriOffset: setGlobalHijriOffset,
-      loadMoreMode: globalLoadMoreMode,
-      setLoadMoreMode: setGlobalLoadMoreMode
-    } = useI18n();
-    
-    const [tempLanguage, setTempLanguage] = useState<LanguageCode>(language);
-    const [location, setLocation] = useState(globalLocation);
-    const [restrictedMode, setRestrictedMode] = useState(globalRestrictedMode);
-    const [showGregorian, setShowGregorian] = useState(globalShowGregorian);
-    const [showHijri, setShowHijri] = useState(globalShowHijri);
-    const [showRamadan, setShowRamadan] = useState(globalShowRamadan);
-    const [hijriOffset, setHijriOffset] = useState(globalHijriOffset);
-    const [loadMoreMode, setLoadMoreMode] = useState<"auto" | "manual">(globalLoadMoreMode);
-
+    showRamadanCountdown: globalShowRamadan,
+    setShowRamadanCountdown: setGlobalShowRamadan,
+    hijriOffset: globalHijriOffset,
+    setHijriOffset: setGlobalHijriOffset
+  } = useI18n();
+  
+  const [tempLanguage, setTempLanguage] = useState<LanguageCode>(language);
+  const [location, setLocation] = useState(globalLocation);
+  const [restrictedMode, setRestrictedMode] = useState(globalRestrictedMode);
+  const [showGregorian, setShowGregorian] = useState(globalShowGregorian);
+  const [showHijri, setShowHijri] = useState(globalShowHijri);
+  const [showRamadan, setShowRamadan] = useState(globalShowRamadan);
+  const [hijriOffset, setHijriOffset] = useState(globalHijriOffset);
 
   // Well-being local state
   const [wbLimits, setWbLimits] = useState<WellBeingLimits>(globalLimits);
@@ -76,13 +72,12 @@ export default function SettingsPage() {
       setLocation(globalLocation);
       setRestrictedMode(globalRestrictedMode);
       setShowGregorian(globalShowGregorian);
-        setShowHijri(globalShowHijri);
-        setShowRamadan(globalShowRamadan);
-        setHijriOffset(globalHijriOffset);
-        setLoadMoreMode(globalLoadMoreMode);
-        setWbLimits(globalLimits);
-      }
-    }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLoadMoreMode, globalLimits]);
+      setShowHijri(globalShowHijri);
+      setShowRamadan(globalShowRamadan);
+      setHijriOffset(globalHijriOffset);
+      setWbLimits(globalLimits);
+    }
+  }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLimits]);
 
   const isRamadanCountdownVisible = showRamadan && daysUntilRamadan !== null && daysUntilRamadan > 0;
   const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
@@ -95,19 +90,18 @@ export default function SettingsPage() {
     }, 50)
   };
 
-    const handleSave = () => {
-      setIsSaving(true);
-      
-      setGlobalLanguage(tempLanguage);
-      setGlobalLocation(location);
-      setGlobalRestrictedMode(restrictedMode);
-      setGlobalShowGregorian(showGregorian);
-      setGlobalShowHijri(showHijri);
-      setGlobalShowRamadan(showRamadan);
-      setGlobalHijriOffset(hijriOffset);
-      setGlobalLoadMoreMode(loadMoreMode);
+  const handleSave = () => {
+    setIsSaving(true);
+    
+    setGlobalLanguage(tempLanguage);
+    setGlobalLocation(location);
+    setGlobalRestrictedMode(restrictedMode);
+    setGlobalShowGregorian(showGregorian);
+    setGlobalShowHijri(showHijri);
+    setGlobalShowRamadan(showRamadan);
+    setGlobalHijriOffset(hijriOffset);
 
-      // Well-being save
+    // Well-being save
     setGlobalLimits(wbLimits);
 
     setTimeout(() => {
@@ -292,43 +286,6 @@ export default function SettingsPage() {
                     inline-block h-4 w-4 transform rounded-full bg-background transition-transform shadow-sm border border-border
                   `} />
                 </button>
-              </div>
-            </div>
-
-            {/* Load More Mode */}
-            <div className="p-6 border-b border-border hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-pink-500/10 rounded-lg">
-                    <Sparkles className="w-6 h-6 text-pink-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{t('loadMoreMode')}</h3>
-                    <p className="text-sm text-muted-foreground">{loadMoreMode === 'auto' ? t('autoLoad') : t('manualLoad')}</p>
-                  </div>
-                </div>
-                <div className="flex bg-muted p-1 rounded-xl">
-                  <button
-                    onClick={() => setLoadMoreMode('auto')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      loadMoreMode === 'auto' 
-                        ? 'bg-background text-foreground shadow-sm' 
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t('autoLoad')}
-                  </button>
-                  <button
-                    onClick={() => setLoadMoreMode('manual')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      loadMoreMode === 'manual' 
-                        ? 'bg-background text-foreground shadow-sm' 
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t('manualLoad')}
-                  </button>
-                </div>
               </div>
             </div>
 
