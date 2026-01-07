@@ -45,8 +45,8 @@ export default function SettingsPage() {
     setShowRamadanCountdown: setGlobalShowRamadan,
     hijriOffset: globalHijriOffset,
     setHijriOffset: setGlobalHijriOffset,
-    loadMoreMode: globalLoadMoreMode,
-    setLoadMoreMode: setGlobalLoadMoreMode
+    loadMode: globalLoadMode,
+    setLoadMode: setGlobalLoadMode
   } = useI18n();
   
   const [tempLanguage, setTempLanguage] = useState<LanguageCode>(language);
@@ -56,7 +56,7 @@ export default function SettingsPage() {
   const [showHijri, setShowHijri] = useState(globalShowHijri);
   const [showRamadan, setShowRamadan] = useState(globalShowRamadan);
   const [hijriOffset, setHijriOffset] = useState(globalHijriOffset);
-  const [loadMoreMode, setLoadMoreModeState] = useState(globalLoadMoreMode);
+  const [loadMode, setLoadMode] = useState(globalLoadMode);
 
   // Well-being local state
   const [wbLimits, setWbLimits] = useState<WellBeingLimits>(globalLimits);
@@ -75,13 +75,14 @@ export default function SettingsPage() {
       setLocation(globalLocation);
       setRestrictedMode(globalRestrictedMode);
       setShowGregorian(globalShowGregorian);
-      setShowHijri(globalShowHijri);
-      setShowRamadan(globalShowRamadan);
-      setHijriOffset(globalHijriOffset);
-      setLoadMoreModeState(globalLoadMoreMode);
-      setWbLimits(globalLimits);
-    }
-  }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLoadMoreMode, globalLimits]);
+        setShowHijri(globalShowHijri);
+        setShowRamadan(globalShowRamadan);
+        setHijriOffset(globalHijriOffset);
+        setLoadMode(globalLoadMode);
+        setWbLimits(globalLimits);
+      }
+    }, [mounted, language, globalLocation, globalRestrictedMode, globalShowGregorian, globalShowHijri, globalShowRamadan, globalHijriOffset, globalLoadMode, globalLimits]);
+
 
   const isRamadanCountdownVisible = showRamadan && daysUntilRamadan !== null && daysUntilRamadan > 0;
   const mainPaddingTop = isRamadanCountdownVisible ? 'pt-[104px] sm:pt-[100px]' : 'pt-[64px]';
@@ -104,7 +105,7 @@ export default function SettingsPage() {
     setGlobalShowHijri(showHijri);
     setGlobalShowRamadan(showRamadan);
     setGlobalHijriOffset(hijriOffset);
-    setGlobalLoadMoreMode(loadMoreMode);
+    setGlobalLoadMode(loadMode);
 
     // Well-being save
     setGlobalLimits(wbLimits);
@@ -294,30 +295,30 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Load More Mode */}
+            {/* Video Loading Mode */}
             <div className="p-6 border-b border-border hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <PlayCircle className="w-6 h-6 text-blue-600" />
+                    <Sparkles className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">{t('loadMoreMode')}</h3>
-                    <p className="text-sm text-muted-foreground">{t('loadMoreAuto')} / {t('loadMoreManual')}</p>
+                    <h3 className="font-semibold">{t('loadMode') || "طريقة تحميل الفيديوهات"}</h3>
+                    <p className="text-sm text-muted-foreground">{t('loadMode') || "اختر بين التمرير اللانهائي أو زر التحميل"}</p>
                   </div>
                 </div>
                 <div className="flex bg-muted p-1 rounded-xl">
                   <button
-                    onClick={() => setLoadMoreModeState('auto')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${loadMoreMode === 'auto' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setLoadMode("auto")}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${loadMode === 'auto' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                    {t('loadMoreAuto').split(' ')[0]}
+                    {t('autoLoad') || "تلقائي"}
                   </button>
                   <button
-                    onClick={() => setLoadMoreModeState('manual')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${loadMoreMode === 'manual' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
+                    onClick={() => setLoadMode("manual")}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${loadMode === 'manual' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                    {t('loadMoreManual').split(' ')[0]}
+                    {t('manualLoad') || "يدوي"}
                   </button>
                 </div>
               </div>

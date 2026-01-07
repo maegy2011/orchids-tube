@@ -42,10 +42,11 @@ export default function VideoGrid({
   onLoadingChange
 }: VideoGridProps) {
   const [videos, setVideos] = useState<Video[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { language, location, restrictedMode, direction, t, loadMoreMode } = useI18n();
+    const { language, location, restrictedMode, direction, loadMode, t } = useI18n();
     const { toggleWatchLater, isInWatchLater } = useWatchLater();
+
 
   const handleWatchLaterClick = (e: React.MouseEvent, video: Video) => {
     e.preventDefault();
@@ -178,23 +179,22 @@ export default function VideoGrid({
   const observerTarget = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      if (loadMoreMode !== 'auto') return;
-
       const observer = new IntersectionObserver(
         (entries) => {
-          if (entries[0].isIntersecting && !isLoading) {
+          if (entries[0].isIntersecting && !isLoading && loadMode === "auto") {
             loadMore();
           }
         },
         { threshold: 0.1, rootMargin: "400px" }
       );
 
-      if (observerTarget.current) {
-        observer.observe(observerTarget.current);
-      }
 
-      return () => observer.disconnect();
-    }, [isLoading, loadMore, loadMoreMode]);
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isLoading, loadMore]);
 
   // Track visible page for pagination sync
   const videoRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -349,39 +349,33 @@ export default function VideoGrid({
                 </Link>
               </motion.div>
             ))}
-        </AnimatePresence>
-          </div>
-        )}
-  
-        {/* Load More Button (Manual Mode) */}
-        {loadMoreMode === 'manual' && videos.length > 0 && (
-          <div className="flex justify-center mt-12 mb-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={loadMore}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-10 py-4 bg-red-600 text-white rounded-2xl font-bold shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Play className="w-5 h-5 fill-current" />
-              )}
-              {isLoading ? t("loading") || "جاري التحميل..." : t("load_more") || "تحميل المزيد من الفيديوهات"}
-            </motion.button>
-          </div>
-        )}
-  
-        {/* Infinite Scroll Trigger (Auto Mode) */}
-        <div ref={observerTarget} className={cn("h-20 flex items-center justify-center mt-8", loadMoreMode === 'manual' && "hidden")}>
-          {isLoading && videos.length > 0 && (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
-              <p className="text-xs text-muted-foreground font-medium">{t("loading") || "جاري تحميل المزيد..."}</p>
-            </div>
-          )}
+          </AnimatePresence>
         </div>
+      )}
+
+      {/* Infinite Scroll Trigger / Load More Button */}
+      <div ref={observerTarget} className="flex flex-col items-center justify-center mt-8 mb-12 min-h-[80px]">
+        {isLoading && (
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+            <p className="text-xs text-muted-foreground font-medium">{t("saving") || "جاري التحميل..."}</p>
+          </div>
+        )}
+
+        {!isLoading && loadMode === "manual" && videos.length > 0 && (
+          <button
+            onClick={loadMore}
+            className="group relative px-8 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg hover:bg-red-700 transition-all active:scale-95 flex items-center gap-2 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            <span className="relative">{t("loadMore") || "تحميل المزيد"}</span>
+            <div className="relative w-5 h-5 flex items-center justify-center">
+              <div className="absolute w-full h-full border-2 border-white/30 rounded-full" />
+              <div className="absolute w-2 h-2 bg-white rounded-full animate-ping" />
+            </div>
+          </button>
+        )}
+      </div>
 
       {!isLoading && videos.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">

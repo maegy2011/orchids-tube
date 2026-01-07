@@ -18,11 +18,12 @@ interface I18nContextType {
     setShowRamadanCountdown: (show: boolean) => void;
     hijriOffset: number;
     setHijriOffset: (offset: number) => void;
-    loadMoreMode: 'auto' | 'manual';
-    setLoadMoreMode: (mode: 'auto' | 'manual') => void;
-  t: (key: TranslationKeys) => string;
-  direction: "ltr" | "rtl";
-}
+    loadMode: "auto" | "manual";
+    setLoadMode: (mode: "auto" | "manual") => void;
+    t: (key: TranslationKeys) => string;
+    direction: "ltr" | "rtl";
+  }
+
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
@@ -34,9 +35,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [showHijriDate, setShowHijriDateState] = useState<boolean>(true);
   const [showRamadanCountdown, setShowRamadanCountdownState] = useState<boolean>(true);
     const [hijriOffset, setHijriOffsetState] = useState<number>(0);
-    const [loadMoreMode, setLoadMoreModeState] = useState<'auto' | 'manual'>('auto');
-  
+    const [loadMode, setLoadModeState] = useState<"auto" | "manual">("auto");
+
     useEffect(() => {
+
     const savedLanguage = localStorage.getItem('app-language-code') as LanguageCode;
     if (savedLanguage && translations[savedLanguage]) {
       setLanguageState(savedLanguage);
@@ -60,9 +62,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       const savedHijriOffset = localStorage.getItem('app-hijri-offset');
       if (savedHijriOffset) setHijriOffsetState(parseInt(savedHijriOffset, 10));
 
-      const savedLoadMoreMode = localStorage.getItem('app-load-more-mode') as 'auto' | 'manual';
-      if (savedLoadMoreMode) setLoadMoreModeState(savedLoadMoreMode);
+      const savedLoadMode = localStorage.getItem('app-load-mode') as "auto" | "manual";
+      if (savedLoadMode) setLoadModeState(savedLoadMode);
     }, []);
+
 
   useEffect(() => {
     // Update document attributes to reflect current language and direction
@@ -105,12 +108,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('app-hijri-offset', String(offset));
     };
 
-    const setLoadMoreMode = (mode: 'auto' | 'manual') => {
-      setLoadMoreModeState(mode);
-      localStorage.setItem('app-load-more-mode', mode);
+    const setLoadMode = (mode: "auto" | "manual") => {
+      setLoadModeState(mode);
+      localStorage.setItem('app-load-mode', mode);
     };
 
     const t = (key: TranslationKeys): string => {
+
     const translation = translations[language][key] || translations['en'][key];
     return translation || (key as string);
   };
@@ -133,11 +137,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         setShowRamadanCountdown,
           hijriOffset,
           setHijriOffset,
-          loadMoreMode,
-          setLoadMoreMode,
+          loadMode,
+          setLoadMode,
         t, 
         direction 
       }}>
+
       <div dir={direction} className="min-h-screen">
         {children}
       </div>
