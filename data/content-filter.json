@@ -19,5 +19,6 @@
   ],
   "whitelist": [],
   "blockedKeywords": [],
-    "maxResults": 50
+  "maxResults": 50,
+  "pinCode": "1990"
 }
